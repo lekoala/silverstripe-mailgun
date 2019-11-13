@@ -1,0 +1,21 @@
+en:
+  MailgunAdmin:
+    ACCESS: 'Access to ''{title}'' section'
+    ACCESS_HELP: 'Allow use of Mailgun admin section'
+    DOINSTALLDOMAIN: 'Install sending domain'
+    DOINSTALL_WEBHOOK: 'Install webhook'
+    DOUNINSTALLDOMAIN: 'Uninstall sending domain'
+    DOUNINSTALL_WEBHOOK: 'Uninstall webhook'
+    DomainInstalled: 'Default sending domain {domain} is installed.'
+    DomainInstalledBut: 'Default sending domain {domain} is installed, but is not properly configured.'
+    DomainNotInstalled: 'Default sending domain {domain} is not installed.'
+    EventDate: Date
+    EventRecipient: Recipient
+    EventSender: Sender
+    EventSubject: Subject
+    EventType: Type
+    WebhookInstalled: 'Webhook is installed and accessible at the following url {url}.'
+    WebhookNotInstalled: 'Webhook is not installed. It should be configured using the following url {url}.'
+    MENUTITLE: Mailgun
+    Messages: Messages
+    Settings: Settings

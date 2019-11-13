@@ -1,0 +1,31 @@
+---
+Name: mailgun
+After:
+  - 'emailconfig'
+---
+SilverStripe\Control\Director:
+  rules:
+    '__mailgun//$Action/$ID/$Name': 'LeKoala\Mailgun\MailgunController'
+LeKoala\Mailgun\MailgunController:
+  log_level : 4
+LeKoala\Mailgun\MailgunHelper:
+  api_key: ''
+  disable_sending : false
+  enable_logging : false
+  log_folder : 'silverstripe-cache/emails'
+  siteconfig_from: 'DefaultFromEmail'
+  siteconfig_to: 'ContactEmail'
+  provide_plain: true
+  # Params can use native format or use mappings defined by MailgunApiClient
+  default_params:
+    tracking_opens: true
+    tracking_clicks: true
+    inline: false
+  inline_styles: true
+LeKoala\Mailgun\MailgunAdmin:
+  cache_enabled: true
+  inbound_subdomain: 'emails'
+  # Defaults to current url or default domain based on default sender
+  webhook_base_url: ''
+  default_search_params: []
+  disabled_search_filters: []
