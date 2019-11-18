@@ -1,5 +1,23 @@
 # SilverStripe Mailgun module
 
+[![Build Status](https://travis-ci.org/lekoala/silverstripe-mailgun.svg?branch=master)](https://travis-ci.org/lekoala/silverstripe-mailgun)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/lekoala/silverstripe-mailgun/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/lekoala/silverstripe-mailgun/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/lekoala/silverstripe-mailgun/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/lekoala/silverstripe-mailgun/?branch=master)
+[![Build Status](https://scrutinizer-ci.com/g/lekoala/silverstripe-mailgun/badges/build.png?b=master)](https://scrutinizer-ci.com/g/lekoala/silverstripe-mailgun/build-status/master)
+[![codecov.io](https://codecov.io/github/lekoala/silverstripe-mailgun/coverage.svg?branch=master)](https://codecov.io/github/lekoala/silverstripe-mailgun?branch=master)
+
+[![Latest Stable Version](https://poser.pugx.org/lekoala/silverstripe-mailgun/version)](https://packagist.org/packages/lekoala/silverstripe-mailgun)
+[![Latest Unstable Version](https://poser.pugx.org/lekoala/silverstripe-mailgun/v/unstable)](//packagist.org/packages/lekoala/silverstripe-mailgun)
+[![Total Downloads](https://poser.pugx.org/lekoala/silverstripe-mailgun/downloads)](https://packagist.org/packages/lekoala/silverstripe-mailgun)
+[![License](https://poser.pugx.org/lekoala/silverstripe-mailgun/license)](https://packagist.org/packages/lekoala/silverstripe-mailgun)
+[![Monthly Downloads](https://poser.pugx.org/lekoala/silverstripe-mailgun/d/monthly)](https://packagist.org/packages/lekoala/silverstripe-mailgun)
+[![Daily Downloads](https://poser.pugx.org/lekoala/silverstripe-mailgun/d/daily)](https://packagist.org/packages/lekoala/silverstripe-mailgun)
+
+[![Dependency Status](https://www.versioneye.com/php/lekoala:silverstripe-mailgun/badge.svg)](https://www.versioneye.com/php/lekoala:silverstripe-mailgun)
+[![Reference Status](https://www.versioneye.com/php/lekoala:silverstripe-mailgun/reference_badge.svg?style=flat)](https://www.versioneye.com/php/lekoala:silverstripe-mailgun/references)
+
+![codecov.io](https://codecov.io/github/lekoala/silverstripe-mailgun/branch.svg?branch=master)
+
 ## Setup
 
 Define in your .env file the following variables
