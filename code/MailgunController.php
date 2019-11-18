@@ -1,4 +1,5 @@
 <?php
+
 namespace LeKoala\Mailgun;
 
 use Exception;
@@ -9,15 +10,23 @@ use SilverStripe\Control\Controller;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Security\Permission;
 use SilverStripe\Core\Injector\Injector;
-use LeKoala\Mailgun\Api\MailgunApiClient;
 
 /**
  * Provide extensions points for handling the webhook
  *
+ * @link https://www.mailgun.com/guides/your-guide-to-webhooks/
  * @author LeKoala <thomas@lekoala.be>
  */
 class MailgunController extends Controller
 {
+    const TYPE_CLICKED = 'clicked';
+    const TYPE_COMPLAINED = 'complained';
+    const TYPE_DELIVERED = 'delivered';
+    const TYPE_OPENED = 'opened';
+    const TYPE_PERMANENT_FAIL = 'permanent_fail';
+    const TYPE_TEMPORARY_FAIL = 'temporary_fail';
+    const TYPE_UNSUBSCRIBED = 'unsubscribed';
+
     protected $eventsCount = 0;
     protected $skipCount = 0;
     private static $allowed_actions = [
@@ -49,7 +58,7 @@ class MailgunController extends Controller
     }
 
     /**
-     * You can also see /resources/sample.json
+     * You can also see /resources/webhook.txt
      *
      * @param HTTPRequest $req
      */
@@ -59,17 +68,14 @@ class MailgunController extends Controller
             return 'You can only test in dev mode';
         }
 
-        $client = $this->getClient();
-
         $file = $this->getRequest()->getVar('file');
         if ($file) {
             $data = file_get_contents(Director::baseFolder() . '/' . rtrim($file, '/'));
-            $payload = json_decode($data, JSON_OBJECT_AS_ARRAY);
         } else {
-            $payload = $client->getSampleEvents();
+            $data = file_get_contents(dirname(__DIR__) . '/resources/webhook.txt');
         }
 
-        $this->processPayload($payload, 'TEST');
+        $this->processPayload($data, 'TEST');
 
         return 'TEST OK - ' . $this->eventsCount . ' events processed / ' . $this->skipCount . ' events skipped';
     }
@@ -94,126 +100,26 @@ class MailgunController extends Controller
             echo 'You can clear existing inbound domains and relay webhooks by passing ?clear_existing=1&clear_webhooks=1&clear_inbound=1<br/>';
         }
 
-        $client = MailgunHelper::getMasterClient();
+        $client = MailgunHelper::getClient();
 
-        $inbound_domain = Environment::getEnv('Mailgun_INBOUND_DOMAIN');
+        $inbound_domain = Environment::getEnv('MAILGUN_INBOUND_DOMAIN');
         if (!$inbound_domain) {
-            die('You must define a key Mailgun_INBOUND_DOMAIN');
+            die('You must define a key MAILGUN_INBOUND_DOMAIN');
         }
 
-        /*
-         *  "name": "Replies Webhook",
-         *  "target": "https://webhooks.customer.example/replies",
-         * "auth_token": "5ebe2294ecd0e0f08eab7690d2a6ee69",
-         *  "match": {
-         *  "protocol": "SMTP",
-         * "domain": "email.example.com"
-         */
+        //TODO : use routing to implement this
 
-        $listWebhooks = $client->listRelayWebhooks();
-        $listInboundDomains = $client->listInboundDomains();
-
-        if ($clearExisting) {
-            // we need to delete relay webhooks first!
-            if ($clearWebhooks) {
-                foreach ($listWebhooks as $wh) {
-                    $client->deleteRelayWebhook($wh['id']);
-                    echo 'Delete relay webhook ' . $wh['id'] . '<br/>';
-                }
-            }
-            if ($clearInbound) {
-                foreach ($listInboundDomains as $id) {
-                    $client->deleteInboundDomain($id['domain']);
-                    echo 'Delete domain ' . $id['domain'] . '<br/>';
-                }
-            }
-
-            $listWebhooks = $client->listRelayWebhooks();
-            $listInboundDomains = $client->listInboundDomains();
-        }
-
-        echo '<pre>' . __FILE__ . ':' . __LINE__ . '<br/>';
-        echo 'List Inbounds Domains:<br/>';
-        print_r($listInboundDomains);
-        echo '</pre>';
-
-        $found = false;
-
-        foreach ($listInboundDomains as $id) {
-            if ($id['domain'] == $inbound_domain) {
-                $found = true;
-            }
-        }
-
-        if (!$found) {
-            echo "Domain is not found, we create it<br/>";
-
-            // This is the domain that users will send email to.
-            $result = $client->createInboundDomain($inbound_domain);
-
-            echo '<pre>' . __FILE__ . ':' . __LINE__ . '<br/>';
-            echo 'Create Inbound Domain:<br/>';
-            print_r($result);
-            echo '</pre>';
-        } else {
-            echo "Domain is already configured<br/>";
-        }
-
-        // Now that you have your InboundDomain set up, you can create your Relay Webhook by sending a POST request to
-        // https://api.Mailgun.com/api/v1/relay-webhooks. This step links your consumer with the Inbound Domain.
-
-        echo '<pre>' . __FILE__ . ':' . __LINE__ . '<br/>';
-        echo 'List Webhooks:<br/>';
-        print_r($listWebhooks);
-        echo '</pre>';
-
-        $found = false;
-
-        foreach ($listWebhooks as $wh) {
-            if ($wh['match']['domain'] == $inbound_domain) {
-                $found = true;
-            }
-        }
-
-        if (!$found) {
-            //  The match.domain property should be the same as the Inbound Domain you set up in the previous step
-            $webhookResult = $client->createRelayWebhook([
-                'name' => 'Inbound Webhook',
-                'target' => Director::absoluteURL('Mailgun/incoming'),
-                'match' => [
-                    'domain' => $inbound_domain
-                ]
-            ]);
-
-            echo '<pre>' . __FILE__ . ':' . __LINE__ . '<br/>';
-            echo 'Webhook result:<br/>';
-            print_r($webhookResult);
-            echo '</pre>';
-
-            if ($webhookResult['id']) {
-                echo "New webhook created with id " . $webhookResult['id'];
-            }
-        } else {
-            echo "Webhook already configured";
-        }
+        throw new Exception("Not implemented yet");
     }
 
     /**
      * Handle incoming webhook
      *
-     * @link https://developers.Mailgun.com/api/#/reference/webhooks/create-a-webhook
-     * @link https://www.Mailgun.com/blog/webhooks-beyond-the-basics/
-     * @link https://support.Mailgun.com/customer/portal/articles/1976204-webhook-event-reference
      * @param HTTPRequest $req
      */
     public function incoming(HTTPRequest $req)
     {
-        // Each webhook batch contains the header X-Messagesystems-Batch-Id,
-        // which is useful for auditing and prevention of processing duplicate batches.
-        $batchId = $req->getHeader('X-Messagesystems-Batch-Id');
-        if (!$batchId) {
-            $batchId = uniqid();
-        }
+        $batchId = uniqid();
 
         $json = file_get_contents('php://input');
 
@@ -226,7 +132,7 @@ class MailgunController extends Controller
             return $response;
         }
 
-        $webhookLogDir = Environment::getEnv('Mailgun_WEBHOOK_LOG_DIR');
+        $webhookLogDir = Environment::getEnv('MAILGUN_WEBHOOK_LOG_DIR');
         if ($webhookLogDir) {
             $dir = rtrim(Director::baseFolder(), '/') . '/' . rtrim($webhookLogDir, '/');
 
@@ -261,64 +167,61 @@ class MailgunController extends Controller
     }
 
     /**
+     * A receiving URI must be public, so webhooks should be secured with a signature,
+     * time stamp and token to create a hash map using an API key to verify that the data
+     * is coming from the developer’s ESP. Users should program their application to check
+     * that hash map and compare it to that of the ESP, and then allow the post to be made only if it matches.
+     *
+     * To verify the webhook is originating from their ESP, users should concatenate time stamp and token values,
+     * encode the resulting string with the HMAC algorithm (using the ESP’s supplied API Key as a key and SHA256 digest mode),
+     * and compare the resulting hexdigest to the signature.
+     * Optionally, users can cache the token value locally and not honor any subsequent request with the same token. This will prevent replay attacks.
+     *
+     * @return bool
+     */
+    protected function verifyCall()
+    {
+        //TODO: implement this
+        return true;
+    }
+
+    /**
      * Process data
      *
-     * @param array $payload
+     * @param string $payload
      * @param string $batchId
      */
-    protected function processPayload(array $payload, $batchId = null)
+    protected function processPayload($payload, $batchId = null)
     {
         $this->extend('beforeProcessPayload', $payload, $batchId);
 
-        $subaccount = MailgunHelper::getClient()->getSubaccount();
+        // TODO: parse payload properly
+        // foreach ($payload as $r) {
+        //     $this->eventsCount++;
+        //     $this->extend('onAnyEvent', $data, $type);
 
-        foreach ($payload as $r) {
-            $ev = $r['msys'];
-
-            // This is a test payload
-            if (empty($ev)) {
-                continue;
-            }
-
-            $type = key($ev);
-            if (!isset($ev[$type])) {
-                $this->getLogger()->warn("Invalid type $type in Mailgun payload");
-                continue;
-            }
-            $data = $ev[$type];
-
-            // Ignore events not related to the subaccount we are managing
-            if (!empty($data['subaccount_id']) && $subaccount && $subaccount != $data['subaccount_id']) {
-                $this->skipCount++;
-                continue;
-            }
-
-            $this->eventsCount++;
-            $this->extend('onAnyEvent', $data, $type);
-
-            switch ($type) {
-                    //Click, Open
-                case MailgunApiClient::TYPE_ENGAGEMENT:
-                    $this->extend('onEngagementEvent', $data, $type);
-                    break;
-                    //Generation Failure, Generation Rejection
-                case MailgunApiClient::TYPE_GENERATION:
-                    $this->extend('onGenerationEvent', $data, $type);
-                    break;
-                    //Bounce, Delivery, Injection, SMS Status, Spam Complaint, Out of Band, Policy Rejection, Delay
-                case MailgunApiClient::TYPE_MESSAGE:
-                    $this->extend('onMessageEvent', $data, $type);
-                    break;
-                    //Relay Injection, Relay Rejection, Relay Delivery, Relay Temporary Failure, Relay Permanent Failure
-                case MailgunApiClient::TYPE_RELAY:
-                    $this->extend('onRelayEvent', $data, $type);
-                    break;
-                    //List Unsubscribe, Link Unsubscribe
-                case MailgunApiClient::TYPE_UNSUBSCRIBE:
-                    $this->extend('onUnsubscribeEvent', $data, $type);
-                    break;
-            }
-        }
+        //     switch ($type) {
+        //             //Click, Open
+        //         case self::TYPE_CLICKED:
+        //         case self::TYPE_OPENED:
+        //             $this->extend('onEngagementEvent', $data, $type);
+        //             break;
+        //             //Generation Failure, Generation Rejection
+        //         case self::TYPE_DELIVERED:
+        //             $this->extend('onGenerationEvent', $data, $type);
+        //             break;
+        //             //Bounce, Delivery, Injection, SMS Status, Spam Complaint, Out of Band, Policy Rejection, Delay
+        //         case self::TYPE_COMPLAINED:
+        //         case self::TYPE_PERMANENT_FAIL:
+        //         case self::TYPE_TEMPORARY_FAIL:
+        //             $this->extend('onMessageEvent', $data, $type);
+        //             break;
+        //             //List Unsubscribe, Link Unsubscribe
+        //         case self::TYPE_UNSUBSCRIBED:
+        //             $this->extend('onUnsubscribeEvent', $data, $type);
+        //             break;
+        //     }
+        // }
 
         $this->extend('afterProcessPayload', $payload, $batchId);
     }

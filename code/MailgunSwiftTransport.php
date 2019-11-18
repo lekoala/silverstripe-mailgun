@@ -115,11 +115,13 @@ class MailgunSwiftTransport implements Swift_Transport
             $queued = true;
         } else {
             $resultResponse = $client->messages()->send(MailgunHelper::getDomain(), $emailData);
-            $result = [
-                'message' => $resultResponse->getMessage(),
-                'id' => $resultResponse->getId(),
-            ];
-            $queued = strpos($result['message'], 'Queued') !== false;
+            if ($resultResponse) {
+                $result = [
+                    'message' => $resultResponse->getMessage(),
+                    'id' => $resultResponse->getId(),
+                ];
+                $queued = strpos($result['message'], 'Queued') !== false;
+            }
         }
         $this->resultApi = $result;
 
@@ -173,7 +175,7 @@ class MailgunSwiftTransport implements Swift_Transport
         foreach ($message->getHeaders()->getAll() as $header) {
             $logContent .= '  ' . $header->getFieldName() . ': ' . $header->getFieldBody() . "\n";
         }
-        if (!empty($params['recipients'])) {
+        if (!empty($message->getTo())) {
             $logContent .= 'Recipients : ' . print_r($message->getTo(), true) . "\n";
         }
         $logContent .= 'Results:' . "\n";
@@ -334,6 +336,7 @@ class MailgunSwiftTransport implements Swift_Transport
             $tags = explode(',', $tagsHeader->getValue());
             $message->getHeaders()->remove('X-Mailgun-Tag');
         }
+        // @link https://documentation.mailgun.com/en/latest/user_manual.html#attaching-data-to-messages
         if ($message->getHeaders()->has('X-Mailgun-Variables')) {
             $metadataHeader = $message->getHeaders()->get('X-Mailgun-Variables');
             $metadata = json_decode($metadataHeader->getValue(), JSON_OBJECT_AS_ARRAY);
@@ -395,12 +398,8 @@ class MailgunSwiftTransport implements Swift_Transport
             // File attachment. You can post multiple attachment values.
             // Important: You must use multipart/form-data encoding when sending attachments.
             if ($child instanceof Swift_Attachment) {
-                //TODO: use multipart/form-data
-                $attachments[] = array(
-                    'type' => $child->getContentType(),
-                    'name' => $child->getFilename(),
-                    'data' => base64_encode($child->getBody())
-                );
+                // eg: 'attachment' => array('/path/to/file.txt', '/path/to/file.txt')
+                $attachments[] = $child->getFilename();
             } elseif ($child instanceof Swift_MimePart && $this->supportsContentType($child->getContentType())) {
                 if ($child->getContentType() == "text/html") {
                     $bodyHtml = $child->getBody();
@@ -427,9 +426,6 @@ class MailgunSwiftTransport implements Swift_Transport
 
         // Mailgun params format does not work well in yml, so we map them
         $rawParams = MailgunHelper::config()->default_params;
-        if ($inlineCss !== null) {
-            $rawParams['inline'] = $inlineCss;
-        }
         $defaultParams =  [];
         foreach ($rawParams as $rawParamKey => $rawParamValue) {
             switch ($rawParamKey) {
@@ -443,7 +439,10 @@ class MailgunSwiftTransport implements Swift_Transport
                     $defaultParams['o:tracking-clicks'] = $rawParamValue;
                     break;
                 case 'testmode':
-                    $defaultParams['o:o:testmode'] = $rawParamValue;
+                    $defaultParams['o:testmode'] = $rawParamValue;
+                    break;
+                default:
+                    $defaultParams[$rawParamKey] = $rawParamValue;
                     break;
             }
         }
@@ -476,7 +475,7 @@ class MailgunSwiftTransport implements Swift_Transport
             }
         }
         if (count($attachments) > 0) {
-            $mailgunMessage['attachments'] = $attachments;
+            $mailgunMessage['attachment'] = $attachments;
         }
 
         return $mailgunMessage;

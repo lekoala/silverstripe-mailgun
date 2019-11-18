@@ -16,16 +16,25 @@ LeKoala\Mailgun\MailgunHelper:
   siteconfig_from: 'DefaultFromEmail'
   siteconfig_to: 'ContactEmail'
   provide_plain: true
-  # Params can use native format or use mappings defined by MailgunApiClient
+  # Params can use native format or use mappings defined by MailgunSwiftTransport
+  # Must be strings!
+  # @link https://documentation.mailgun.com/en/latest/api-sending.html#sending
   default_params:
-    tracking_opens: true
-    tracking_clicks: true
-    inline: false
+    tracking_opens: 'yes'
+    tracking_clicks: 'yes'
   inline_styles: true
 LeKoala\Mailgun\MailgunAdmin:
   cache_enabled: true
   inbound_subdomain: 'emails'
   # Defaults to current url or default domain based on default sender
   webhook_base_url: ''
+  webhook_events:
+    - clicked
+    - complained
+    - delivered
+    - opened
+    - permanent_fail
+    - temporary_fail
+    - unsubscribed
   default_search_params: []
   disabled_search_filters: []

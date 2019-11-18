@@ -1,6 +1,8 @@
 <?php
+
 namespace LeKoala\Mailgun;
 
+use DateTime;
 use \Exception;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\Form;
@@ -13,6 +15,7 @@ use SilverStripe\Forms\DateField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\FormField;
 use SilverStripe\Forms\TextField;
+use LeKoala\Mailgun\MailgunHelper;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Environment;
 use SilverStripe\Forms\FormAction;
@@ -24,14 +27,15 @@ use SilverStripe\Forms\LiteralField;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Security\Permission;
-use LeKoala\Mailgun\MailgunHelper;
+use Mailgun\Model\Event\EventResponse;
 use SilverStripe\Forms\CompositeField;
 use SilverStripe\SiteConfig\SiteConfig;
+use Mailgun\Model\Webhook\IndexResponse as WebhookIndexResponse;
 use SilverStripe\Core\Injector\Injector;
+use LeKoala\Mailgun\MailgunSwiftTransport;
 use SilverStripe\Control\Email\SwiftMailer;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Security\PermissionProvider;
-use LeKoala\Mailgun\MailgunSwiftTransport;
 use SilverStripe\Forms\GridField\GridFieldConfig;
 use SilverStripe\Forms\GridField\GridFieldFooter;
 use SilverStripe\Forms\GridField\GridFieldDetailForm;
@@ -39,6 +43,7 @@ use SilverStripe\Forms\GridField\GridFieldDataColumns;
 use Symbiote\GridFieldExtensions\GridFieldTitleHeader;
 use SilverStripe\Forms\GridField\GridFieldToolbarHeader;
 use SilverStripe\Forms\GridField\GridFieldSortableHeader;
+use Mailgun\Model\Domain\IndexResponse as DomainIndexResponse;
 
 /**
  * Allow you to see messages sent through the api key used to send messages
@@ -52,7 +57,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     const WEBHOOK_CACHE_MINUTES = 1440; // 1 day
     const SENDINGDOMAIN_CACHE_MINUTES = 1440; // 1 day
 
-    private static $menu_title = "mailgun";
+    private static $menu_title = "Mailgun";
     private static $url_segment = "mailgun";
     private static $menu_icon = "mailgun/images/mailgun-icon.png";
     private static $url_rule = '/$Action/$ID/$OtherID';
@@ -66,12 +71,10 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         "doUninstallDomain",
     ];
 
-    private static $cache_enabled = true;
-
     /**
-     * @var bool
+     * @var boolean
      */
-    protected $subaccountKey = false;
+    private static $cache_enabled = true;
 
     /**
      * @var Exception
@@ -172,17 +175,17 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
 
             $columns = $messageListConfig->getComponentByType(GridFieldDataColumns::class);
             $columns->setDisplayFields([
-                'transmission_id' => _t('MailgunAdmin.EventTransmissionId', 'Id'),
+                'event_id' => _t('MailgunAdmin.EventTransmissionId', 'Id'),
                 'timestamp' => _t('MailgunAdmin.EventDate', 'Date'),
                 'type' => _t('MailgunAdmin.EventType', 'Type'),
-                'rcpt_to' => _t('MailgunAdmin.EventRecipient', 'Recipient'),
+                'recipient' => _t('MailgunAdmin.EventRecipient', 'Recipient'),
                 'subject' => _t('MailgunAdmin.EventSubject', 'Subject'),
-                'friendly_from' => _t('MailgunAdmin.EventSender', 'Sender'),
+                'sender' => _t('MailgunAdmin.EventSender', 'Sender'),
             ]);
 
             $columns->setFieldFormatting([
                 'timestamp' => function ($value, &$item) {
-                    return date('Y-m-d H:i:s', strtotime($value));
+                    return date('Y-m-d H:i:s', $value);
                 },
             ]);
 
@@ -219,11 +222,8 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
             $domainTabData = $this->DomainTab();
             $settingsTab->push($domainTabData);
 
-            // Show webhook options if not using a subaccount key
-            if (!$this->subaccountKey) {
-                $webhookTabData = $this->WebhookTab();
-                $settingsTab->push($webhookTabData);
-            }
+            $webhookTabData = $this->WebhookTab();
+            $settingsTab->push($webhookTabData);
 
             // Add a refresh button
             $refreshButton = new LiteralField('RefreshButton', $this->ButtonHelper(
@@ -301,7 +301,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     /**
      * A simple cache helper
      *
-     * @param string $method
+     * @param string $method Using dot notation like events.get
      * @param array $params
      * @param int $expireInSeconds
      * @return array
@@ -311,7 +311,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $enabled = $this->getCacheEnabled();
         if ($enabled) {
             $cache = $this->getCache();
-            $key = md5(serialize($params));
+            $key = md5($method . '-' . serialize($params));
             $cacheResult = $cache->get($key);
         }
         if ($enabled && $cacheResult) {
@@ -319,7 +319,25 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         } else {
             try {
                 $client = MailgunHelper::getClient();
-                $data = $client->$method($params);
+
+                if (!strpos($method, '.') !== false) {
+                    throw new Exception("$method should use dot notation");
+                }
+
+                // Split dot notation
+                $methodParts = explode('.', $method);
+                $service = $methodParts[0];
+                $realMethod = $methodParts[1];
+
+                if ($service == 'domains') {
+                    if (!empty($params)) {
+                        $data = $client->$service()->$realMethod($params[0]);
+                    } else {
+                        $data = $client->$service()->$realMethod();
+                    }
+                } else {
+                    $data = $client->$service()->$realMethod(MailgunHelper::getDomain(), $params);
+                }
             } catch (Exception $ex) {
                 $this->lastException = $ex;
                 $this->getLogger()->debug($ex);
@@ -335,6 +353,12 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         return $data;
     }
 
+    /**
+     * Values are mixed with default values and formatted for api usage
+     *
+     * @link https://documentation.mailgun.com/en/latest/api-events.html#query-options
+     * @return array
+     */
     public function getParams()
     {
         $params = $this->config()->default_search_params;
@@ -349,18 +373,35 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $params = array_merge($params, $data);
 
         // Respect api formats
-        if (!empty($params['to'])) {
-            $params['to'] = date('Y-m-d', strtotime(str_replace('/', '-', $params['to']))) . 'T00:00';
+        if (!empty($params['begin'])) {
+            if (!is_int($params['begin'])) {
+                $params['begin'] = strtotime(str_replace('/', '-', $params['begin']));
+            }
+            // Need an end date, default to now
+            if (empty($params['end'])) {
+                $params['end'] = time();
+            }
         }
-        if (!empty($params['from'])) {
-            $params['from'] = date('Y-m-d', strtotime(str_replace('/', '-', $params['from']))) . 'T23:59';
+        if (!empty($params['end'])) {
+            if (!is_int($params['end'])) {
+                $params['end'] = strtotime(str_replace('/', '-', $params['end']));
+            }
         }
+
 
         $params = array_filter($params);
 
         return $params;
     }
 
+    /**
+     * Get a raw value for a single param
+     * Useful for retrieving values as set by user
+     *
+     * @param string $name
+     * @param mixed $default
+     * @return mixed
+     */
     public function getParam($name, $default = null)
     {
         $data = $this->getSession()->get(__class__ . '.Search');
@@ -378,40 +419,35 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         }
 
         $fields = new CompositeField();
-        $fields->push($from = new DateField('params[from]', _t('MailgunAdmin.DATEFROM', 'From'), $this->getParam('from')));
+        $fields->push($from = new DateField('params[begin]', _t('MailgunAdmin.DATEFROM', 'From'), $this->getParam('begin')));
         // $from->setConfig('min', date('Y-m-d', strtotime('-10 days')));
 
-        $fields->push(new DateField('params[to]', _t('MailgunAdmin.DATETO', 'To'), $to = $this->getParam('to')));
+        $fields->push(new DateField('params[end]', _t('MailgunAdmin.DATETO', 'To'), $to = $this->getParam('end')));
 
-        if (!in_array('friendly_froms', $disabled_filters)) {
-            $fields->push($friendly_froms = new TextField('params[friendly_froms]', _t('MailgunAdmin.FRIENDLYFROM', 'Sender'), $this->getParam('friendly_froms')));
+        if (!in_array('from', $disabled_filters)) {
+            $fields->push($friendly_froms = new TextField('params[from]', _t('MailgunAdmin.FRIENDLYFROM', 'Sender'), $this->getParam('from')));
             $friendly_froms->setAttribute('placeholder', 'sender@mail.example.com,other@example.com');
         }
 
-        if (!in_array('recipients', $disabled_filters)) {
-            $fields->push($recipients = new TextField('params[recipients]', _t('MailgunAdmin.RECIPIENTS', 'Recipients'), $this->getParam('recipients')));
+        if (!in_array('to', $disabled_filters)) {
+            $fields->push($recipients = new TextField('params[to]', _t('MailgunAdmin.RECIPIENTS', 'Recipients'), $this->getParam('to')));
             $recipients->setAttribute('placeholder', 'recipient@example.com,other@example.com');
         }
 
-        // Only allow filtering by subaccount if a master key is defined
-        if (MailgunHelper::config()->master_api_key && !in_array('subaccounts', $disabled_filters)) {
-            $fields->push($subaccounts = new TextField('params[subaccounts]', _t('MailgunAdmin.SUBACCOUNTS', 'Subaccounts'), $this->getParam('subaccounts')));
-            $subaccounts->setAttribute('placeholder', '101,102');
-        }
-
-        $fields->push(new DropdownField('params[per_page]', _t('MailgunAdmin.PERPAGE', 'Number of results'), array(
+        $fields->push(new DropdownField('params[limit]', _t('MailgunAdmin.PERPAGE', 'Number of results'), array(
             100 => 100,
-            500 => 500,
-            1000 => 1000,
-            10000 => 10000,
-        ), $this->getParam('per_page', 100)));
+            200 => 200,
+            300 => 300,
+        ), $this->getParam('limit', 100)));
 
         foreach ($fields->FieldList() as $field) {
             $field->addExtraClass('no-change-track');
         }
 
         // This is a ugly hack to allow embedding a form into another form
-        $fields->push($doSearch = new FormAction('doSearch', _t('MailgunAdmin.DOSEARCH', 'Search')));
+        $doSearch = new FormAction('doSearch', _t('MailgunAdmin.DOSEARCH', 'Search'));
+        $doSearch->addExtraClass('btn-primary');
+        $fields->push($doSearch);
         $doSearch->setAttribute('onclick', "jQuery('#Form_SearchForm').append(jQuery('#Form_EditForm input,#Form_EditForm select').clone()).submit();");
 
         return $fields;
@@ -419,9 +455,10 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
 
     public function SearchForm()
     {
-        $SearchForm = new Form($this, 'SearchForm', new FieldList(), new FieldList([
-            new FormAction('doSearch')
-        ]));
+        $doSearch = new FormAction('doSearch');
+        $SearchForm = new Form($this, 'SearchForm', new FieldList(), new FieldList(
+            [$doSearch]
+        ));
         $SearchForm->setAttribute('style', 'display:none');
         return $SearchForm;
     }
@@ -462,38 +499,62 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     {
         $params = $this->getParams();
 
-        $messages = $this->getCachedData('searchMessageEvents', $params, 60 * self::MESSAGE_CACHE_MINUTES);
-        if ($messages === false) {
+        /* @var $response EventResponse */
+        $response = $this->getCachedData('events.get', $params, 60 * self::MESSAGE_CACHE_MINUTES);
+
+        $messages = [];
+        if ($response) {
+            $messages = $response->getItems();
+        }
+
+        if (empty($messages)) {
             if ($this->lastException) {
                 return $this->lastException->getMessage();
             }
             return _t('MailgunAdmin.NO_MESSAGES', 'No messages');
         }
 
-        // Consolidate Subject/Sender for open and click events
-        $transmissions = [];
-        foreach ($messages as $message) {
-            if (empty($message['transmission_id']) || empty($message['subject'])) {
-                continue;
-            }
-            if (isset($transmissions[$message['transmission_id']])) {
-                continue;
-            }
-            $transmissions[$message['transmission_id']] = $message;
-        }
-
         $list = new ArrayList();
         if ($messages) {
+            $mergedMessages = [];
+            $allHeaders = [];
+
+            // events may not contain full headers
             foreach ($messages as $message) {
-                // If we have a transmission id but no subject, try to find the transmission details
-                if (isset($message['transmission_id']) && empty($message['subject']) && isset($transmissions[$message['transmission_id']])) {
-                    $message = array_merge($transmissions[$message['transmission_id']], $message);
+                $realMessage = $message->getMessage();
+                //  "message-id" => "20191118104902.1.F9F052E7ED79D36A@sandbox7d650fc2614d4234be80987482afde91.mailgun.org"
+                if (!empty($realMessage['headers']['to'])) {
+                    $allHeaders[$realMessage['headers']['message-id']] = $realMessage['headers'];
                 }
-                // In some case (errors, etc) we don't have a friendly from
-                if (empty($message['friendly_from']) && isset($message['msg_from'])) {
-                    $message['friendly_from'] = $message['msg_from'];
+            }
+
+            foreach ($messages as $message) {
+                /*
+                "headers" => array:4 [▼
+                  "to" => ""Some Name" <some@example.com>"
+                  "message-id" => "somekindofsandbox.mailgun.org"
+                  "from" => "noreply@xomekindofsandbox.mailgun.org"
+                  "subject" => "Email subject here"
+                ]
+                "attachments" => []
+                "size" => 110
+                */
+                $realMessage = $message->getMessage();
+                if (empty($realMessage['headers']['to'])) {
+                    $headers = $allHeaders[$realMessage['headers']['message-id']];
+                } else {
+                    $headers = $realMessage['headers'];
                 }
-                $m = new ArrayData($message);
+
+                $shortid = substr($realMessage['headers']['message-id'], 0, strpos($realMessage['headers']['message-id'], '@'));
+                $m = new ArrayData([
+                    'event_id' => $shortid,
+                    'timestamp' => $message->getTimestamp(),
+                    'type' => $message->getEvent(),
+                    'recipient' =>  $headers['to'] ?? '',
+                    'subject' => $headers['subject'] ?? '',
+                    'sender' => $headers['from'] ?? '',
+                ]);
                 $list->push($m);
             }
         }
@@ -510,7 +571,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     {
         $title = _t("MailgunAdmin.MENUTITLE", LeftAndMain::menu_title_for_class('Mailgun'));
         return [
-            "CMS_ACCESS_Mailgun" => [
+            "CMS_ACCESS_MAILGUN" => [
                 'name' => _t('MailgunAdmin.ACCESS', "Access to '{title}' section", ['title' => $title]),
                 'category' => _t('Permission.CMS_ACCESS_CATEGORY', 'CMS Access'),
                 'help' => _t(
@@ -577,7 +638,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         if (!$mailer->getSwiftMailer()->getTransport() instanceof MailgunSwiftTransport) {
             return false;
         }
-        return Permission::check("CMS_ACCESS_Mailgun", 'any', $member);
+        return Permission::check("CMS_ACCESS_MAILGUN", 'any', $member);
     }
 
     /**
@@ -596,16 +657,33 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
      */
     public function WebhookInstalled()
     {
-        $list = $this->getCachedData('listAllWebhooks', null, 60 * self::WEBHOOK_CACHE_MINUTES);
-
-        if (empty($list)) {
+        /* @var $response WebhookIndexResponse */
+        $response = $this->getCachedData('webhooks.index', null, 60 * self::WEBHOOK_CACHE_MINUTES);
+        if (!$response) {
             return false;
         }
         $url = $this->WebhookUrl();
-        foreach ($list as $el) {
-            if (!empty($el['target']) && $el['target'] === $url) {
-                return $el;
-            }
+        $dom = $this->getDomain();
+        if (strpos($response->getBounceUrl(), $dom)) {
+            return true;
+        }
+        if (strpos($response->getDeliverUrl(), $dom)) {
+            return true;
+        }
+        if (strpos($response->getDropUrl(), $dom)) {
+            return true;
+        }
+        if (strpos($response->getSpamUrl(), $dom)) {
+            return true;
+        }
+        if (strpos($response->getUnsubscribeUrl(), $dom)) {
+            return true;
+        }
+        if (strpos($response->getClickUrl(), $dom)) {
+            return true;
+        }
+        if (strpos($response->getOpenUrl(), $dom)) {
+            return true;
         }
         return false;
     }
@@ -641,13 +719,13 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     public function WebhookUrl()
     {
         if (self::config()->webhook_base_url) {
-            return rtrim(self::config()->webhook_base_url, '/') . '/Mailgun/incoming';
+            return rtrim(self::config()->webhook_base_url, '/') . '/__mailgun/incoming';
         }
         if (Director::isLive()) {
-            return Director::absoluteURL('/Mailgun/incoming');
+            return Director::absoluteURL('/__mailgun/incoming');
         }
         $protocol = Director::protocol();
-        return $protocol . $this->getDomain() . '/Mailgun/incoming';
+        return $protocol . $this->getDomain() . '/__mailgun/incoming';
     }
 
     /**
@@ -681,10 +759,11 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $description = SiteConfig::current_site_config()->Title;
 
         try {
-            if (defined('SS_DEFAULT_ADMIN_USERNAME') && SS_DEFAULT_ADMIN_USERNAME) {
-                $client->createSimpleWebhook($description, $url, null, true, ['username' => SS_DEFAULT_ADMIN_USERNAME, 'password' => SS_DEFAULT_ADMIN_PASSWORD]);
-            } else {
-                $client->createSimpleWebhook($description, $url);
+            $types = self::config()->webhook_events;
+            if (!empty($types)) {
+                foreach ($types as $type) {
+                    $client->webhooks()->create(MailgunHelper::getDomain(), $type, $url . '?type=' . $type);
+                }
             }
             $this->getCache()->clear();
         } catch (Exception $ex) {
@@ -723,9 +802,29 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $client = MailgunHelper::getClient();
 
         try {
-            $el = $this->WebhookInstalled();
-            if ($el && !empty($el['id'])) {
-                $client->deleteWebhook($el['id']);
+            $response = $client->webhooks()->index(MailgunHelper::getDomain());
+            if ($response) {
+                if ($response->getBounceUrl()) {
+                    $client->webhooks()->delete(MailgunHelper::getDomain(), 'bounce');
+                }
+                if ($response->getDeliverUrl()) {
+                    $client->webhooks()->delete(MailgunHelper::getDomain(), 'deliver');
+                }
+                if ($response->getDropUrl()) {
+                    $client->webhooks()->delete(MailgunHelper::getDomain(), 'drop');
+                }
+                if ($response->getSpamUrl()) {
+                    $client->webhooks()->delete(MailgunHelper::getDomain(), 'spam');
+                }
+                if ($response->getUnsubscribeUrl()) {
+                    $client->webhooks()->delete(MailgunHelper::getDomain(), 'unsubscribe');
+                }
+                if ($response->getClickUrl()) {
+                    $client->webhooks()->delete(MailgunHelper::getDomain(), 'clicked');
+                }
+                if ($response->getOpenUrl()) {
+                    $client->webhooks()->delete(MailgunHelper::getDomain(), 'open');
+                }
             }
             $this->getCache()->clear();
         } catch (Exception $ex) {
@@ -744,12 +843,18 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     {
         $client = MailgunHelper::getClient();
 
-        $domain = $this->getCachedData('getSendingDomain', $this->getDomain(), 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
+        /* @var $response DomainIndexResponse */
+        $response = $this->getCachedData('domains.index', $this->getDomain(), 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
 
-        if (empty($domain)) {
-            return false;
+        $domains = $response->getDomains();
+        $defaultDomain = $this->getDomain();
+
+        foreach ($domains as $domain) {
+            if ($domain->getName() == $defaultDomain) {
+                return true;
+            }
         }
-        return $domain;
+        return false;
     }
 
     /**
@@ -781,27 +886,78 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $defaultDomain = $this->getDomain();
         $defaultDomainInfos = null;
 
-        $domains = $this->getCachedData('listAllSendingDomains', null, 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
+        /* @var $response DomainIndexResponse */
+        $response = $this->getCachedData('domains.index', null, 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
+        $domains = [];
+        if ($response) {
+            $domains = $response->getDomains();
+        }
+
+        /*
+        0 => Domain {#2919 ▼
+            -createdAt: DateTimeImmutable @1573661800 {#2921 ▶}
+            -smtpLogin: "postmaster@sandbox.mailgun.org"
+            -name: "sandbox.mailgun.org"
+            -smtpPassword: "some-pass-word"
+            -wildcard: false
+            -spamAction: "disabled"
+            -state: "active"
+          }
+        */
 
         $fields = new CompositeField();
 
         $list = new ArrayList();
         if ($domains) {
             foreach ($domains as $domain) {
-                // We are using a subaccount api key
-                if (!isset($domain['shared_with_subaccounts'])) {
-                    $this->subaccountKey = true;
+                $showResponse = $this->getCachedData('domains.show', [$domain->getName()], 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
+
+                /*
+                 "sending_dns_records": [
+                    {
+                    "record_type": "TXT",
+                    "valid": "valid",
+                    "name": "domain.com",
+                    "value": "v=spf1 include:mailgun.org ~all"
+                    },
+                    {
+                    "record_type": "TXT",
+                    "valid": "valid",
+                    "name": "domain.com",
+                    "value": "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUA...."
+                    },
+                    {
+                    "record_type": "CNAME",
+                    "valid": "valid",
+                    "name": "email.domain.com",
+                    "value": "mailgun.org"
+                    }
+                ]
+                */
+
+                $dnsRecords = $showResponse->getOutboundDNSRecords();
+
+                $spfOk = false;
+                $dkimOk = false;
+
+                foreach ($dnsRecords as $dnsRecord) {
+                    $value = $dnsRecord->getValue();
+                    if (strpos($value, 'v=spf1') !== false) {
+                        $spfOk = $dnsRecord->isValid();
+                    }
+                    if (strpos($value, 'k=rsa') !== false) {
+                        $dkimOk = $dnsRecord->isValid();
+                    }
                 }
 
                 $list->push(new ArrayData([
-                    'Domain' => $domain['domain'],
-                    'SPF' => $domain['status']['spf_status'],
-                    'DKIM' => $domain['status']['dkim_status'],
-                    'Compliance' => $domain['status']['compliance_status'],
-                    'Verified' => $domain['status']['ownership_verified'],
+                    'Domain' => $domain->getName(),
+                    'SPF' => $spfOk,
+                    'DKIM' => $dkimOk,
+                    'Verified' => ($domain->getState() == 'active') ? true : false,
                 ]));
 
-                if ($domain['domain'] == $defaultDomain) {
+                if ($domain->getName() == $defaultDomain) {
                     $defaultDomainInfos = $domain;
                 }
             }
@@ -811,7 +967,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $config->addComponent(new GridFieldToolbarHeader());
         $config->addComponent(new GridFieldTitleHeader());
         $config->addComponent($columns = new GridFieldDataColumns());
-        $columns->setDisplayFields(ArrayLib::valuekey(['Domain', 'SPF', 'DKIM', 'Compliance', 'Verified']));
+        $columns->setDisplayFields(ArrayLib::valuekey(['Domain', 'SPF', 'DKIM', 'Verified']));
         $domainsList = new GridField('SendingDomains', _t('MailgunAdmin.ALL_SENDING_DOMAINS', 'Configured sending domains'), $list, $config);
         $domainsList->addExtraClass('mb-2');
         $fields->push($domainsList);
@@ -923,7 +1079,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         }
 
         try {
-            $client->createSimpleSendingDomain($domain);
+            $client->domains()->create($domain);
             $this->getCache()->clear();
         } catch (Exception $ex) {
             $this->getLogger()->debug($ex);
@@ -944,7 +1100,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
 
         $domain = $this->getDomain();
 
-        if ($domainInfos && $domainInfos['status']['ownership_verified']) {
+        if ($domainInfos && $domainInfos->getState() == 'active') {
             $fields->push(new LiteralField('Info', $this->MessageHelper(
                 _t('MailgunAdmin.DomainInstalled', 'Default domain {domain} is installed.', ['domain' => $domain]),
                 'good'
@@ -979,7 +1135,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         try {
             $el = $this->SendingDomainInstalled();
             if ($el) {
-                $client->deleteSendingDomain($domain);
+                $client->domains()->delete($domain);
             }
             $this->getCache()->clear();
         } catch (Exception $ex) {

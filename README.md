@@ -64,12 +64,12 @@ For full details, look at the [documentation](https://developers.Mailgun.com/api
 
 ```php
 $email = new Email();
-$email->setSubject($sellerTitle . ' - Invoice - ' . $date);
+$email->setSubject($subject);
 $email->setBody($body);
 // Through Mandrill compat layer
-$email->getSwiftMessage()->getHeaders()->addTextHeader('X-MC-Metadata', json_encode(['RecordID' => $this->ID]));
-// Or use M-SYS header
-$email->getSwiftMessage()->getHeaders()->addTextHeader('X-MSYS-API', json_encode(['metadata' => ['RecordID' => $this->ID]]));
+$email->getSwiftMessage()->getHeaders()->addTextHeader('X-MC-Metadata', json_encode(['FIRST_NAME' => 'Jon Smith']));
+// Or use Mailgun
+$email->getSwiftMessage()->getHeaders()->addTextHeader('X-Mailgun-Variables', json_encode(['FIRST_NAME' => 'Jon Smith']));
 ```
 
 ## Webhooks
@@ -126,17 +126,12 @@ directory. Make sure the directory exists. It is relative to your base folder.
 
 ## Inlining styles
 
-Although Mailgun can inline styles for you, it may not work properly for complex
-style sheet, such as Foundation Emails. This is why the package pelago\emogrifier
-is not required by default and styles are inlined in php to get the best results.
+In order to have the best resulst, we use the package pelago\emogrifier to inline styles
 
-If you want to restore built-in functionnality, use this:
-
+If you want to restore default functionnality, use this
 ```yaml
 LeKoala\Mailgun\MailgunHelper:
     inline_styles: false
-    default_params:
-    inlineCss: true
 ```
 
 ## Compatibility

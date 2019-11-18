@@ -1,0 +1,39 @@
+{
+    "items": [{
+        "tags": [],
+        "id": "czsjqFATSlC3QtAK-C80nw",
+        "timestamp": 1376325780.160809,
+        "envelope": {
+            "sender": "me@samples.mailgun.org",
+            "transport": ""
+        },
+        "event": "accepted",
+        "campaigns": [],
+        "user-variables": {},
+        "flags": {
+            "is-authenticated": true,
+            "is-test-mode": false
+        },
+        "message": {
+            "headers": {
+                "to": "foo@example.com",
+                "message-id": "20130812164300.28108.52546@samples.mailgun.org",
+                "from": "Excited User <me@samples.mailgun.org>",
+                "subject": "Hello"
+            },
+            "attachments": [],
+            "recipients": [
+                "foo@example.com",
+                "baz@example.com",
+                "bar@example.com"
+            ],
+            "size": 69
+        },
+        "recipient": "baz@example.com",
+        "method": "http"
+    }],
+    "paging": {
+        "next": "https://api.mailgun.net/v3/samples.mailgun.org/events/W3siY...",
+        "previous": "https://api.mailgun.net/v3/samples.mailgun.org/events/Lkawm..."
+    }
+}
