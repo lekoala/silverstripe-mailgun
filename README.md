@@ -60,8 +60,6 @@ same principle than the SMTP api.
 The main way to pass parameters is to add a json encoded string through the
 X-MSYS-API header, but you can also use that Mandrill compatiblity layer.
 
-For full details, look at the [documentation](https://developers.Mailgun.com/api/smtp/)
-
 ```php
 $email = new Email();
 $email->setSubject($subject);
@@ -74,9 +72,11 @@ $email->getSwiftMessage()->getHeaders()->addTextHeader('X-Mailgun-Variables', js
 
 ## Webhooks
 
+NOT IMPLEMENTED YET
+
 From the Mailgun Admin, you can setup a webhook for your website. This webhook
 will be called and MailgunController will take care of handling all events
-for you. It is registered under the __Mailgun/ route.
+for you. It is registered under the __mailgun/ route.
 
 By default, MailgunController will do nothing. Feel free to add your own
 extensions to MailgunController to define your own rules, like "Send an
@@ -95,7 +95,7 @@ You can also inspect the whole payload and the batch id with
 - beforeProcessPayload : to check if a payload has been processed
 - afterProcessPayload : to mark the payload has been processed or log information
 
-You can test if your extension is working properly by visiting /__Mailgun/test
+You can test if your extension is working properly by visiting /__mailgun/test
 if your site is in dev mode. It will load sample data from the API.
 
 Please ensure that the url for the webhook is properly configured if required
