@@ -2,7 +2,6 @@
 
 namespace LeKoala\Mailgun;
 
-use DateTime;
 use \Exception;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\Form;
