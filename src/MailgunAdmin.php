@@ -364,7 +364,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         if (!$params) {
             $params = [];
         }
-        $data = $this->getSession()->get(__class__ . '.Search');
+        $data = $this->getSession()->get(__CLASS__ . '.Search');
         if (!$data) {
             $data = [];
         }
@@ -403,7 +403,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
      */
     public function getParam($name, $default = null)
     {
-        $data = $this->getSession()->get(__class__ . '.Search');
+        $data = $this->getSession()->get(__CLASS__ . '.Search');
         if (!$data) {
             return $default;
         }
@@ -418,18 +418,21 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         }
 
         $fields = new CompositeField();
-        $fields->push($from = new DateField('params[begin]', _t('MailgunAdmin.DATEFROM', 'From'), $this->getParam('begin')));
+        $from = new DateField('params[begin]', _t('MailgunAdmin.DATEFROM', 'From'), $this->getParam('begin'));
+        $fields->push($from);
         // $from->setConfig('min', date('Y-m-d', strtotime('-10 days')));
 
         $fields->push(new DateField('params[end]', _t('MailgunAdmin.DATETO', 'To'), $to = $this->getParam('end')));
 
         if (!in_array('from', $disabled_filters)) {
-            $fields->push($friendly_froms = new TextField('params[from]', _t('MailgunAdmin.FRIENDLYFROM', 'Sender'), $this->getParam('from')));
+            $friendly_froms = new TextField('params[from]', _t('MailgunAdmin.FRIENDLYFROM', 'Sender'), $this->getParam('from'));
+            $fields->push($friendly_froms);
             $friendly_froms->setAttribute('placeholder', 'sender@mail.example.com,other@example.com');
         }
 
         if (!in_array('to', $disabled_filters)) {
-            $fields->push($recipients = new TextField('params[to]', _t('MailgunAdmin.RECIPIENTS', 'Recipients'), $this->getParam('to')));
+            $recipients = new TextField('params[to]', _t('MailgunAdmin.RECIPIENTS', 'Recipients'), $this->getParam('to'));
+            $fields->push($recipients);
             $recipients->setAttribute('placeholder', 'recipient@example.com,other@example.com');
         }
 
@@ -447,7 +450,8 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $doSearch = new FormAction('doSearch', _t('MailgunAdmin.DOSEARCH', 'Search'));
         $doSearch->addExtraClass('btn-primary');
         $fields->push($doSearch);
-        $doSearch->setAttribute('onclick', "jQuery('#Form_SearchForm').append(jQuery('#Form_EditForm input,#Form_EditForm select').clone()).submit();");
+        $onclick = "jQuery('#Form_SearchForm').append(jQuery('#Form_EditForm input,#Form_EditForm select').clone()).submit();";
+        $doSearch->setAttribute('onclick', $onclick);
 
         return $fields;
     }
@@ -481,7 +485,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
             }
         }
 
-        $this->getSession()->set(__class__ . '.Search', $params);
+        $this->getSession()->set(__CLASS__ . '.Search', $params);
         $this->getSession()->save($this->getRequest());
 
         return $this->redirectBack();
@@ -857,25 +861,6 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     }
 
     /**
-     * Trigger request to check if sending domain is verified
-     *
-     * @return array
-     */
-    public function VerifySendingDomain()
-    {
-        $client = MailgunHelper::getClient();
-
-        $host = $this->getDomain();
-
-        $verification = $client->verifySendingDomain($host);
-
-        if (empty($verification)) {
-            return false;
-        }
-        return $verification;
-    }
-
-    /**
      * Get content of the tab
      *
      * @return FormField
@@ -909,7 +894,8 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
         $list = new ArrayList();
         if ($domains) {
             foreach ($domains as $domain) {
-                $showResponse = $this->getCachedData('domains.show', [$domain->getName()], 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
+                $time = 60 * self::SENDINGDOMAIN_CACHE_MINUTES;
+                $showResponse = $this->getCachedData('domains.show', [$domain->getName()], $time);
 
                 /*
                  "sending_dns_records": [
@@ -1053,8 +1039,9 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     {
         $host = $this->getDomain();
 
+        $params =  ['domain' => $host];
         $fields->push(new LiteralField('Info', $this->MessageHelper(
-            _t('MailgunAdmin.DomainNotInstalled', 'Default sending domain {domain} is not installed.', ['domain' => $host]),
+            _t('MailgunAdmin.DomainNotInstalled', 'Default sending domain {domain} is not installed.', $params),
             "bad"
         )));
         $fields->push(new LiteralField('doInstallDomain', $this->ButtonHelper(

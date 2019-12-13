@@ -41,13 +41,13 @@
     },
     "autoload": {
         "psr-4": {
-            "LeKoala\\Mailgun\\": "code/",
+            "LeKoala\\Mailgun\\": "src/",
             "LeKoala\\Mailgun\\Test\\": "tests/"
         }
     },
     "scripts": {
-        "lint": "phpcs code/ tests/",
-        "lint-clean": "phpcbf code/ tests/"
+        "lint": "phpcs src/ tests/",
+        "lint-clean": "phpcbf src/ tests/"
     },
     "minimum-stability": "dev",
     "prefer-stable": true
