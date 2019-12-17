@@ -6,9 +6,9 @@ en:
     DOINSTALL_WEBHOOK: 'Install webhook'
     DOUNINSTALLDOMAIN: 'Uninstall sending domain'
     DOUNINSTALL_WEBHOOK: 'Uninstall webhook'
-    DomainInstalled: 'Default sending domain {domain} is installed.'
-    DomainInstalledBut: 'Default sending domain {domain} is installed, but is not properly configured.'
-    DomainNotInstalled: 'Default sending domain {domain} is not installed.'
+    DomainInstalled: 'Sending domain {domain} is installed.'
+    DomainInstalledBut: 'Sending domain {domain} is installed, but is not properly configured.'
+    DomainNotInstalled: 'Sending domain {domain} is not installed.'
     EventDate: Date
     EventRecipient: Recipient
     EventSender: Sender

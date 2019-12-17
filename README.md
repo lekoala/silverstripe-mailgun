@@ -152,6 +152,9 @@ LeKoala\Mailgun\MailgunHelper:
     inline_styles: false
 ```
 
+## Todo
+- Support multiple domains
+
 ## Compatibility
 Tested with 4.4 but should work fine on any 4.x
 

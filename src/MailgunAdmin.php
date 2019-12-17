@@ -1022,11 +1022,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
      */
     public function getDomain()
     {
-        $domain = $this->getDomainFromEmail();
-        if (!$domain) {
-            return $this->getDomainFromHost();
-        }
-        return $domain;
+        return MailgunHelper::getDomain();
     }
 
     /**
@@ -1041,7 +1037,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
 
         $params =  ['domain' => $host];
         $fields->push(new LiteralField('Info', $this->MessageHelper(
-            _t('MailgunAdmin.DomainNotInstalled', 'Default sending domain {domain} is not installed.', $params),
+            _t('MailgunAdmin.DomainNotInstalled', 'Sending domain {domain} is not installed.', $params),
             "bad"
         )));
         $fields->push(new LiteralField('doInstallDomain', $this->ButtonHelper(
