@@ -133,6 +133,15 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     }
 
     /**
+     * @param GridFieldConfig $config
+     * @return GridFieldDataColumns
+     */
+    protected function getGridFieldDataColumns(GridFieldConfig $config)
+    {
+        return $config->getComponentByType(GridFieldDataColumns::class);
+    }
+
+    /**
      * Returns a GridField of messages
      * @return CMSForm
      */
@@ -172,7 +181,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
                 $messageListConfig
             )->addExtraClass("messages_grid");
 
-            $columns = $messageListConfig->getComponentByType(GridFieldDataColumns::class);
+            $columns = $this->getGridFieldDataColumns($messageListConfig);
             $columns->setDisplayFields([
                 'event_id' => _t('MailgunAdmin.EventTransmissionId', 'Id'),
                 'timestamp' => _t('MailgunAdmin.EventDate', 'Date'),
@@ -187,18 +196,6 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
                     return date('Y-m-d H:i:s', $value);
                 },
             ]);
-
-            // Validator setup
-            $validator = null;
-            if ($record && method_exists($record, 'getValidator')) {
-                $validator = $record->getValidator();
-            }
-
-            if ($validator) {
-                $messageListConfig
-                    ->getComponentByType(GridFieldDetailForm::class)
-                    ->setValidator($validator);
-            }
         }
 
         // Create tabs
