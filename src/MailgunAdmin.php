@@ -840,14 +840,14 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
     /**
      * Check if sending domain is installed
      *
-     * @return array
+     * @return bool
      */
     public function SendingDomainInstalled()
     {
         $client = MailgunHelper::getClient();
 
         /* @var $response DomainIndexResponse */
-        $response = $this->getCachedData('domains.index', $this->getDomain(), 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
+        $response = $this->getCachedData('domains.index', null, 60 * self::SENDINGDOMAIN_CACHE_MINUTES);
 
         $domains = $response->getDomains();
         $defaultDomain = $this->getDomain();
@@ -1082,11 +1082,11 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
      */
     public function UninstallDomainForm(CompositeField $fields)
     {
-        $domainInfos = $this->SendingDomainInstalled();
+        $SendingDomainInstalled = $this->SendingDomainInstalled();
 
         $domain = $this->getDomain();
 
-        if ($domainInfos && $domainInfos->getState() == 'active') {
+        if ($SendingDomainInstalled) {
             $fields->push(new LiteralField('Info', $this->MessageHelper(
                 _t('MailgunAdmin.DomainInstalled', 'Default domain {domain} is installed.', ['domain' => $domain]),
                 'good'
