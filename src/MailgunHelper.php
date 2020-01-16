@@ -51,7 +51,7 @@ class MailgunHelper
         if (!self::$client) {
             $key = self::config()->api_key;
             if (empty($key)) {
-                throw new \Exception("api_key is not configured for " . __class__);
+                throw new \Exception("api_key is not configured for " . __CLASS__);
             }
             $endpoint = self::DEFAULT_ENDPOINT;
             if (self::config()->endpoint) {
