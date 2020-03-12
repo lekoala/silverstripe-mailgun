@@ -76,7 +76,7 @@ By using custom headers you can pass parameters to the api by following the
 same principle than the SMTP api.
 
 The main way to pass parameters is to add a json encoded string through the
-X-MSYS-API header, but you can also use that Mandrill compatiblity layer.
+X-Mailgun-Variables header, but you can also use that Mandrill compatiblity layer.
 
 ```php
 $email = new Email();
