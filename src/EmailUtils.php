@@ -30,7 +30,12 @@ class EmailUtils
             //     ->removeRedundantClassesAfterCssInlined($cssInliner);
 
             // disableInvisibleNodeRemoval
-            HtmlPruner::fromDomDocument($domDocument)->removeElementsWithDisplayNone();
+            $doc =   HtmlPruner::fromDomDocument($domDocument);
+            if (method_exists($doc, 'removeInvisibleNodes')) {
+                $doc->removeInvisibleNodes();
+            } else {
+                $doc->removeElementsWithDisplayNone();
+            }
 
             // enableCssToHtmlMapping
             $html = CssToAttributeConverter::fromDomDocument($domDocument)
