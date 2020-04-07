@@ -85,7 +85,7 @@ class MailgunTest extends SapphireTest
 
         $sent = $email->send();
 
-        $this->assertTrue(!!$sent, "Api returned : " );
+        $this->assertTrue(!!$sent, "Api returned : ");
     }
 
     public function testClientSending()
