@@ -12,6 +12,7 @@ LeKoala\Mailgun\MailgunHelper:
   api_key: ''
   disable_sending : false
   enable_logging : false
+  debug: false
   log_folder : 'silverstripe-cache/emails'
   siteconfig_from: 'DefaultFromEmail'
   siteconfig_to: 'ContactEmail'

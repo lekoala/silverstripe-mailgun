@@ -50,6 +50,16 @@ If you're using the [Mailgun EU service](https://documentation.mailgun.com/en/la
     # Will use https://api.eu.mailgun.net/v3
     MAILGUN_ENDPOINT='https://api.eu.mailgun.net/v3'
 
+## Debug
+
+Create a postbin http://bin.mailgun.net/ and set the following parameters
+
+    MAILGUN_ENDPOINT='http://bin.mailgun.net/XXX'
+    MAILGUN_DEBUG=true
+
+Please note that the test suite does not work with postbin because it returns html
+response and do not mock api behaviour
+
 ## Register the new mailer
 
 If you define the MAILGUN_API_KEY variable, the mailer transport will be automatically registered.

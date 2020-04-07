@@ -13,6 +13,7 @@ use SilverStripe\Core\Injector\Injector;
 use LeKoala\Mailgun\MailgunSwiftTransport;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Control\Email\SwiftMailer;
+use Mailgun\HttpClient\HttpClientConfigurator;
 
 /**
  * This configurable class helps decoupling the api client from SilverStripe
@@ -42,6 +43,14 @@ class MailgunHelper
     }
 
     /**
+     * @return boolean
+     */
+    public static function isMailgunMailer()
+    {
+        return self::getMailer()->getSwiftMailer()->getTransport() instanceof MailgunSwiftTransport;
+    }
+
+    /**
      * Get the api client instance
      * @return Mailgun
      * @throws Exception
@@ -57,7 +66,13 @@ class MailgunHelper
             if (self::config()->endpoint) {
                 $endpoint = self::config()->endpoint;
             }
-            self::$client = Mailgun::create($key, $endpoint);
+            $configurator = new HttpClientConfigurator();
+            $configurator->setApiKey($key);
+            $configurator->setEndpoint($endpoint);
+            if (self::config()->debug) {
+                $configurator->setDebug(true);
+            }
+            self::$client = new Mailgun($configurator);
         }
         return self::$client;
     }
@@ -112,6 +127,12 @@ class MailgunHelper
         $endpoint = Environment::getEnv('MAILGUN_ENDPOINT');
         if ($endpoint) {
             self::config()->endpoint = $endpoint;
+        }
+
+        // Debug
+        $debug = Environment::getEnv('MAILGUN_DEBUG');
+        if ($debug) {
+            self::config()->debug = $debug;
         }
 
         // Disable sending

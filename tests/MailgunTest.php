@@ -31,11 +31,14 @@ class MailgunTest extends SapphireTest
 
         $this->testMailer = Injector::inst()->get(Mailer::class);
 
-        // Ensure we have the right mailer
+        // By default, we have a test mailer, restore the original one
         $mailer = new SwiftMailer();
         $swiftMailer = new \Swift_Mailer(new \Swift_MailTransport());
         $mailer->setSwiftMailer($swiftMailer);
         Injector::inst()->registerService($mailer, Mailer::class);
+
+        // Then register our mailer
+        MailgunHelper::registerTransport();
     }
 
     protected function tearDown()
@@ -69,15 +72,41 @@ class MailgunTest extends SapphireTest
             $this->markTestIncomplete("You must define tests environement variable: MAILGUN_TEST_TO, MAILGUN_TEST_FROM");
         }
 
-        $inst = MailgunHelper::registerTransport();
+        $this->assertTrue(MailgunHelper::isMailgunMailer(), "Mailgun transport is not used");
 
         $email = new Email();
         $email->setTo($test_to);
         $email->setSubject('Test email');
         $email->setBody("Body of my email");
         $email->setFrom($test_from);
+
+        // add one headers
+        $email->getSwiftMessage()->getHeaders()->addTextHeader('X-Mailgun-Tag', 'test');
+
         $sent = $email->send();
 
-        $this->assertTrue(!!$sent);
+        $this->assertTrue(!!$sent, "Api returned : " );
+    }
+
+    public function testClientSending()
+    {
+        $test_to = Environment::getEnv('MAILGUN_TEST_TO');
+        $test_from = Environment::getEnv('MAILGUN_TEST_FROM');
+        if (!$test_from || !$test_to) {
+            $this->markTestIncomplete("You must define tests environement variable: MAILGUN_TEST_TO, MAILGUN_TEST_FROM");
+        }
+
+        $client = MailgunHelper::getClient();
+
+        $domain = MailgunHelper::getDomain();
+        $params = [
+            'from' => $test_from,
+            'to' => $test_to,
+            'subject' => 'Raw client test',
+            'text' => "Raw client body",
+        ];
+        $result = $client->messages()->send($domain, $params);
+
+        $this->assertNotEmpty($result->getId(), $result->getMessage());
     }
 }
