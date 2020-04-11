@@ -13,9 +13,6 @@
 [![Monthly Downloads](https://poser.pugx.org/lekoala/silverstripe-mailgun/d/monthly)](https://packagist.org/packages/lekoala/silverstripe-mailgun)
 [![Daily Downloads](https://poser.pugx.org/lekoala/silverstripe-mailgun/d/daily)](https://packagist.org/packages/lekoala/silverstripe-mailgun)
 
-[![Dependency Status](https://www.versioneye.com/php/lekoala:silverstripe-mailgun/badge.svg)](https://www.versioneye.com/php/lekoala:silverstripe-mailgun)
-[![Reference Status](https://www.versioneye.com/php/lekoala:silverstripe-mailgun/reference_badge.svg?style=flat)](https://www.versioneye.com/php/lekoala:silverstripe-mailgun/references)
-
 ![codecov.io](https://codecov.io/github/lekoala/silverstripe-mailgun/branch.svg?branch=master)
 
 ## Setup
