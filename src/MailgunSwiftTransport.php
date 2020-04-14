@@ -308,6 +308,7 @@ class MailgunSwiftTransport implements Swift_Transport
         $headers = array();
         $tags = array();
         $metadata = array();
+        $mergeVars = array();
         $inlineCss = null;
 
         // Mandrill compatibility
@@ -327,6 +328,15 @@ class MailgunSwiftTransport implements Swift_Transport
             $inlineCss = $message->getHeaders()->get('X-MC-InlineCSS')->getValue();
             $message->getHeaders()->remove('X-MC-InlineCSS');
         }
+        if ($message->getHeaders()->has('X-MC-MergeVars')) {
+            $mergeVarsHeader = $message->getHeaders()->get('X-MC-MergeVars');
+            $mergeVarsFromMC = json_decode($mergeVarsHeader->getValue(), JSON_OBJECT_AS_ARRAY);
+            // We need to transform them to a mandrill friendly format rcpt => vars, to email : {...}
+            foreach ($mergeVarsFromMC as $row) {
+                $mergeVars[$row['rcpt']] = $row['vars'];
+            }
+            $message->getHeaders()->remove('X-MC-MergeVars');
+        }
 
         // Handle mailgun headers
         // Data is merge with message and removed from headers
@@ -341,6 +351,11 @@ class MailgunSwiftTransport implements Swift_Transport
             $metadataHeader = $message->getHeaders()->get('X-Mailgun-Variables');
             $metadata = json_decode($metadataHeader->getValue(), JSON_OBJECT_AS_ARRAY);
             $message->getHeaders()->remove('X-Mailgun-Variables');
+        }
+        if ($message->getHeaders()->has('X-Mailgun-Recipient-Variables')) {
+            $recipientVariablesHeader = $message->getHeaders()->get('X-Mailgun-Recipient-Variables');
+            $mergeVars = json_decode($recipientVariablesHeader->getValue(), JSON_OBJECT_AS_ARRAY);
+            $message->getHeaders()->remove('X-Mailgun-Recipient-Variables');
         }
 
         // Build recipients
@@ -468,6 +483,9 @@ class MailgunSwiftTransport implements Swift_Transport
         }
         if (!empty($bcc)) {
             $mailgunMessage['bcc'] = $bcc;
+        }
+        if (!empty($mergeVars)) {
+            $mailgunMessage['recipient-variables'] = json_encode($mergeVars);
         }
         if (!empty($headers)) {
             foreach ($headers as $headerKey => $headerValue) {
