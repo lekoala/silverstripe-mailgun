@@ -541,7 +541,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
                 */
                 $realMessage = $message->getMessage();
                 if (empty($realMessage['headers']['to'])) {
-                    $headers = $allHeaders[$realMessage['headers']['message-id']];
+                    $headers = $allHeaders[$realMessage['headers']['message-id']] ?? $realMessage['headers'];
                 } else {
                     $headers = $realMessage['headers'];
                 }
