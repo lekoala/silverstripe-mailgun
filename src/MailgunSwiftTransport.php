@@ -413,8 +413,8 @@ class MailgunSwiftTransport implements Swift_Transport
             // File attachment. You can post multiple attachment values.
             // Important: You must use multipart/form-data encoding when sending attachments.
             if ($child instanceof Swift_Attachment) {
-                // eg: 'attachment' => array('/path/to/file.txt', '/path/to/file.txt')
-                $attachments[] = $child->getFilename();
+                $attachment = ['filename' => $child->getFilename(), 'fileContent' => $child->getBody()];
+                $attachments[] = $attachment;
             } elseif ($child instanceof Swift_MimePart && $this->supportsContentType($child->getContentType())) {
                 if ($child->getContentType() == "text/html") {
                     $bodyHtml = $child->getBody();
