@@ -58,7 +58,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
 
     private static $menu_title = "Mailgun";
     private static $url_segment = "mailgun";
-    private static $menu_icon = "vendor/lekoala/silverstripe-mailgun/images/mailgun-icon.png";
+    private static $menu_icon = "lekoala/silverstripe-mailgun:images/mailgun-icon.png";
     private static $url_rule = '/$Action/$ID/$OtherID';
     private static $allowed_actions = [
         'settings',
