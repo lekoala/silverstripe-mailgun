@@ -364,9 +364,6 @@ class MailgunSwiftTransport implements Swift_Transport
             if ($primaryEmail === null) {
                 $primaryEmail = $toEmail;
             }
-            if (!$toName) {
-                $toName = $toEmail;
-            }
             if ($toName) {
                 $recipients[] = sprintf('%s <%s>', $toName, $toEmail);
             } else {
