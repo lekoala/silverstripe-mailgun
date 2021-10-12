@@ -6,7 +6,7 @@ use \Exception;
 use \Swift_MimePart;
 use \Swift_Transport;
 use \Swift_Attachment;
-use \Swift_Mime_Message;
+use \Swift_Mime_SimpleMessage;
 use \Swift_Events_SendEvent;
 use \Swift_Events_EventListener;
 use Psr\Log\LoggerInterface;
@@ -22,7 +22,6 @@ use Mailgun\Mailgun;
  */
 class MailgunSwiftTransport implements Swift_Transport
 {
-
     /**
      * @var Swift_Transport_SimpleMailInvoker
      */
@@ -86,22 +85,37 @@ class MailgunSwiftTransport implements Swift_Transport
     }
 
     /**
-     * @param Swift_Mime_Message $message
+     * Not used
+     */
+    public function ping()
+    {
+        return true;
+    }
+
+    /**
+     * @param Swift_Mime_SimpleMessage $message
      * @param null $failedRecipients
      * @return int Number of messages sent
      */
-    public function send(Swift_Mime_Message $message, &$failedRecipients = null)
-    {
+    public function send(
+        Swift_Mime_SimpleMessage $message,
+        &$failedRecipients = null
+    ) {
         $this->resultApi = null;
         if ($event = $this->eventDispatcher->createSendEvent($this, $message)) {
-            $this->eventDispatcher->dispatchEvent($event, 'beforeSendPerformed');
+            $this->eventDispatcher->dispatchEvent(
+                $event,
+                'beforeSendPerformed'
+            );
             if ($event->bubbleCancelled()) {
                 return 0;
             }
         }
 
         $sendCount = 0;
-        $disableSending = $message->getHeaders()->has('X-SendingDisabled') || MailgunHelper::config()->disable_sending;
+        $disableSending =
+            $message->getHeaders()->has('X-SendingDisabled') ||
+            MailgunHelper::config()->disable_sending;
 
         $emailData = $this->buildMessage($message);
 
@@ -114,7 +128,9 @@ class MailgunSwiftTransport implements Swift_Transport
             ];
             $queued = true;
         } else {
-            $resultResponse = $client->messages()->send(MailgunHelper::getDomain(), $emailData);
+            $resultResponse = $client
+                ->messages()
+                ->send(MailgunHelper::getDomain(), $emailData);
             if ($resultResponse) {
                 $result = [
                     'message' => $resultResponse->getMessage(),
@@ -154,12 +170,14 @@ class MailgunSwiftTransport implements Swift_Transport
     /**
      * Log message content
      *
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @param array $results Results from the api
      * @return void
      */
-    protected function logMessageContent(Swift_Mime_Message $message, $results = [])
-    {
+    protected function logMessageContent(
+        Swift_Mime_SimpleMessage $message,
+        $results = []
+    ) {
         $subject = $message->getSubject();
         $body = $message->getBody();
         $contentType = $this->getMessagePrimaryContentType($message);
@@ -173,10 +191,16 @@ class MailgunSwiftTransport implements Swift_Transport
         $logContent .= 'From : ' . print_r($message->getFrom(), true) . "\n";
         $logContent .= 'Headers:' . "\n";
         foreach ($message->getHeaders()->getAll() as $header) {
-            $logContent .= '  ' . $header->getFieldName() . ': ' . $header->getFieldBody() . "\n";
+            $logContent .=
+                '  ' .
+                $header->getFieldName() .
+                ': ' .
+                $header->getFieldBody() .
+                "\n";
         }
         if (!empty($message->getTo())) {
-            $logContent .= 'Recipients : ' . print_r($message->getTo(), true) . "\n";
+            $logContent .=
+                'Recipients : ' . print_r($message->getTo(), true) . "\n";
         }
         $logContent .= 'Results:' . "\n";
         foreach ($results as $resultKey => $resultValue) {
@@ -197,16 +221,32 @@ class MailgunSwiftTransport implements Swift_Transport
             $logContent .= '<hr />';
             foreach ($attachments as $attachment) {
                 if ($attachment instanceof Swift_Attachment) {
-                    $attachmentDestination = $logFolder . '/' . $logName . '_' . $attachment->getFilename();
-                    file_put_contents($attachmentDestination, $attachment->getBody());
-                    $logContent .= 'File : <a href="' . $attachmentDestination . '">' . $attachment->getFilename() . '</a><br/>';
+                    $attachmentDestination =
+                        $logFolder .
+                        '/' .
+                        $logName .
+                        '_' .
+                        $attachment->getFilename();
+                    file_put_contents(
+                        $attachmentDestination,
+                        $attachment->getBody()
+                    );
+                    $logContent .=
+                        'File : <a href="' .
+                        $attachmentDestination .
+                        '">' .
+                        $attachment->getFilename() .
+                        '</a><br/>';
                 }
             }
         }
 
         // Store it
-        $ext = ($contentType == 'text/html') ? 'html' : 'txt';
-        $r = file_put_contents($logFolder . '/' . $logName . '.' . $ext, $logContent);
+        $ext = $contentType == 'text/html' ? 'html' : 'txt';
+        $r = file_put_contents(
+            $logFolder . '/' . $logName . '.' . $ext,
+            $logContent
+        );
 
         if (!$r && Director::isDev()) {
             throw new Exception('Failed to store email in ' . $logFolder);
@@ -218,7 +258,9 @@ class MailgunSwiftTransport implements Swift_Transport
      */
     public function getLogger()
     {
-        return Injector::inst()->get(LoggerInterface::class)->withName('Mailgun');
+        return Injector::inst()
+            ->get(LoggerInterface::class)
+            ->withName('Mailgun');
     }
 
     /**
@@ -234,10 +276,7 @@ class MailgunSwiftTransport implements Swift_Transport
      */
     protected function getSupportedContentTypes()
     {
-        return array(
-            'text/plain',
-            'text/html'
-        );
+        return ['text/plain', 'text/html'];
     }
 
     /**
@@ -250,18 +289,19 @@ class MailgunSwiftTransport implements Swift_Transport
     }
 
     /**
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @return string
      */
-    protected function getMessagePrimaryContentType(Swift_Mime_Message $message)
-    {
+    protected function getMessagePrimaryContentType(
+        Swift_Mime_SimpleMessage $message
+    ) {
         $contentType = $message->getContentType();
 
         if ($this->supportsContentType($contentType)) {
             return $contentType;
         }
 
-        // SwiftMailer hides the content type set in the constructor of Swift_Mime_Message as soon
+        // SwiftMailer hides the content type set in the constructor of Swift_Mime_SimpleMessage as soon
         // as you add another part to the message. We need to access the protected property
         // _userContentType to get the original type.
         $messageRef = new \ReflectionClass($message);
@@ -277,11 +317,11 @@ class MailgunSwiftTransport implements Swift_Transport
     /**
      * Convert a Swift Message for the api
      *
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @return array Mailgun Send Message
      * @throws \Swift_SwiftException
      */
-    public function buildMessage(Swift_Mime_Message $message)
+    public function buildMessage(Swift_Mime_SimpleMessage $message)
     {
         $contentType = $this->getMessagePrimaryContentType($message);
 
@@ -291,7 +331,11 @@ class MailgunSwiftTransport implements Swift_Transport
         $fromFirstName = current($fromAddresses);
 
         if ($fromFirstName) {
-            $this->fromEmail = sprintf('%s <%s>', $fromFirstName, $fromFirstEmail);
+            $this->fromEmail = sprintf(
+                '%s <%s>',
+                $fromFirstName,
+                $fromFirstEmail
+            );
         } else {
             $this->fromEmail = $fromFirstEmail;
         }
@@ -299,16 +343,18 @@ class MailgunSwiftTransport implements Swift_Transport
         $toAddresses = $message->getTo();
         $ccAddresses = $message->getCc() ? $message->getCc() : [];
         $bccAddresses = $message->getBcc() ? $message->getBcc() : [];
-        $replyToAddresses = $message->getReplyTo() ? $message->getReplyTo() : [];
+        $replyToAddresses = $message->getReplyTo()
+            ? $message->getReplyTo()
+            : [];
 
-        $recipients = array();
-        $cc = array();
-        $bcc = array();
-        $attachments = array();
-        $headers = array();
-        $tags = array();
-        $metadata = array();
-        $mergeVars = array();
+        $recipients = [];
+        $cc = [];
+        $bcc = [];
+        $attachments = [];
+        $headers = [];
+        $tags = [];
+        $metadata = [];
+        $mergeVars = [];
         $inlineCss = null;
 
         // Mandrill compatibility
@@ -321,16 +367,25 @@ class MailgunSwiftTransport implements Swift_Transport
         }
         if ($message->getHeaders()->has('X-MC-Metadata')) {
             $metadataHeader = $message->getHeaders()->get('X-MC-Metadata');
-            $metadata = json_decode($metadataHeader->getValue(), JSON_OBJECT_AS_ARRAY);
+            $metadata = json_decode(
+                $metadataHeader->getValue(),
+                JSON_OBJECT_AS_ARRAY
+            );
             $message->getHeaders()->remove('X-MC-Metadata');
         }
         if ($message->getHeaders()->has('X-MC-InlineCSS')) {
-            $inlineCss = $message->getHeaders()->get('X-MC-InlineCSS')->getValue();
+            $inlineCss = $message
+                ->getHeaders()
+                ->get('X-MC-InlineCSS')
+                ->getValue();
             $message->getHeaders()->remove('X-MC-InlineCSS');
         }
         if ($message->getHeaders()->has('X-MC-MergeVars')) {
             $mergeVarsHeader = $message->getHeaders()->get('X-MC-MergeVars');
-            $mergeVarsFromMC = json_decode($mergeVarsHeader->getValue(), JSON_OBJECT_AS_ARRAY);
+            $mergeVarsFromMC = json_decode(
+                $mergeVarsHeader->getValue(),
+                JSON_OBJECT_AS_ARRAY
+            );
             // We need to transform them to a mandrill friendly format rcpt => vars, to email : {...}
             foreach ($mergeVarsFromMC as $row) {
                 $mergeVars[$row['rcpt']] = $row['vars'];
@@ -348,13 +403,23 @@ class MailgunSwiftTransport implements Swift_Transport
         }
         // @link https://documentation.mailgun.com/en/latest/user_manual.html#attaching-data-to-messages
         if ($message->getHeaders()->has('X-Mailgun-Variables')) {
-            $metadataHeader = $message->getHeaders()->get('X-Mailgun-Variables');
-            $metadata = json_decode($metadataHeader->getValue(), JSON_OBJECT_AS_ARRAY);
+            $metadataHeader = $message
+                ->getHeaders()
+                ->get('X-Mailgun-Variables');
+            $metadata = json_decode(
+                $metadataHeader->getValue(),
+                JSON_OBJECT_AS_ARRAY
+            );
             $message->getHeaders()->remove('X-Mailgun-Variables');
         }
         if ($message->getHeaders()->has('X-Mailgun-Recipient-Variables')) {
-            $recipientVariablesHeader = $message->getHeaders()->get('X-Mailgun-Recipient-Variables');
-            $mergeVars = json_decode($recipientVariablesHeader->getValue(), JSON_OBJECT_AS_ARRAY);
+            $recipientVariablesHeader = $message
+                ->getHeaders()
+                ->get('X-Mailgun-Recipient-Variables');
+            $mergeVars = json_decode(
+                $recipientVariablesHeader->getValue(),
+                JSON_OBJECT_AS_ARRAY
+            );
             $message->getHeaders()->remove('X-Mailgun-Recipient-Variables');
         }
 
@@ -410,12 +475,18 @@ class MailgunSwiftTransport implements Swift_Transport
             // File attachment. You can post multiple attachment values.
             // Important: You must use multipart/form-data encoding when sending attachments.
             if ($child instanceof Swift_Attachment) {
-                $attachment = ['filename' => $child->getFilename(), 'fileContent' => $child->getBody()];
+                $attachment = [
+                    'filename' => $child->getFilename(),
+                    'fileContent' => $child->getBody(),
+                ];
                 $attachments[] = $attachment;
-            } elseif ($child instanceof Swift_MimePart && $this->supportsContentType($child->getContentType())) {
-                if ($child->getContentType() == "text/html") {
+            } elseif (
+                $child instanceof Swift_MimePart &&
+                $this->supportsContentType($child->getContentType())
+            ) {
+                if ($child->getContentType() == 'text/html') {
                     $bodyHtml = $child->getBody();
-                } elseif ($child->getContentType() == "text/plain") {
+                } elseif ($child->getContentType() == 'text/plain') {
                     $bodyText = $child->getBody();
                 }
             }
@@ -433,12 +504,15 @@ class MailgunSwiftTransport implements Swift_Transport
 
         // Custom unsubscribe list
         if ($message->getHeaders()->has('List-Unsubscribe')) {
-            $headers['List-Unsubscribe'] = $message->getHeaders()->get('List-Unsubscribe')->getValue();
+            $headers['List-Unsubscribe'] = $message
+                ->getHeaders()
+                ->get('List-Unsubscribe')
+                ->getValue();
         }
 
         // Mailgun params format does not work well in yml, so we map them
         $rawParams = MailgunHelper::config()->default_params;
-        $defaultParams =  [];
+        $defaultParams = [];
         foreach ($rawParams as $rawParamKey => $rawParamValue) {
             switch ($rawParamKey) {
                 case 'inline':
@@ -460,13 +534,13 @@ class MailgunSwiftTransport implements Swift_Transport
         }
 
         // Build base transmission
-        $mailgunMessage = array(
+        $mailgunMessage = [
             'to' => implode(',', $recipients),
             'from' => $this->fromEmail,
             'subject' => $message->getSubject(),
             'html' => $bodyHtml,
             'text' => $bodyText,
-        );
+        ];
         if ($reply_to) {
             $mailgunMessage['h:Reply-To'] = $reply_to;
         }

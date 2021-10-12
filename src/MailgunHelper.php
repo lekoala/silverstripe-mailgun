@@ -3,6 +3,7 @@
 namespace LeKoala\Mailgun;
 
 use \Exception;
+use Swift_Mailer;
 use Mailgun\Mailgun;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Environment;
@@ -47,7 +48,9 @@ class MailgunHelper
      */
     public static function isMailgunMailer()
     {
-        return self::getMailer()->getSwiftMailer()->getTransport() instanceof MailgunSwiftTransport;
+        return self::getMailer()
+            ->getSwiftMailer()
+            ->getTransport() instanceof MailgunSwiftTransport;
     }
 
     /**
@@ -60,7 +63,9 @@ class MailgunHelper
         if (!self::$client) {
             $key = self::config()->api_key;
             if (empty($key)) {
-                throw new \Exception("api_key is not configured for " . __CLASS__);
+                throw new \Exception(
+                    'api_key is not configured for ' . __CLASS__
+                );
             }
             $endpoint = self::DEFAULT_ENDPOINT;
             if (self::config()->endpoint) {
@@ -102,7 +107,7 @@ class MailgunHelper
         if ($domain = Environment::getEnv('MAILGUN_DOMAIN')) {
             return $domain;
         }
-        throw new Exception("MAILGUN_DOMAIN not set");
+        throw new Exception('MAILGUN_DOMAIN not set');
     }
 
     /**
@@ -164,14 +169,17 @@ class MailgunHelper
         $client = self::getClient();
         $mailer = self::getMailer();
         if (!$mailer instanceof SwiftMailer) {
-            throw new Exception("Mailer must be an instance of " . SwiftMailer::class . " instead of " . get_class($mailer));
+            throw new Exception(
+                'Mailer must be an instance of ' .
+                    SwiftMailer::class .
+                    ' instead of ' .
+                    get_class($mailer)
+            );
         }
         $transport = new MailgunSwiftTransport($client);
-        $newSwiftMailer = $mailer->getSwiftMailer()->newInstance($transport);
-        $mailer->setSwiftMailer($newSwiftMailer);
+        $mailer->setSwiftMailer(new Swift_Mailer($transport));
         return $mailer;
     }
-
 
     /**
      * Resolve default send from address
@@ -184,8 +192,10 @@ class MailgunHelper
      * @param bool $createDefault
      * @return string
      */
-    public static function resolveDefaultFromEmail($from = null, $createDefault = true)
-    {
+    public static function resolveDefaultFromEmail(
+        $from = null,
+        $createDefault = true
+    ) {
         $original_from = $from;
         if (!empty($from)) {
             // If we have a sender, validate its email
