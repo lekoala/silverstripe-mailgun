@@ -3,11 +3,10 @@
 namespace LeKoala\Mailgun;
 
 use \Exception;
-use \Swift_Mime_SimpleMessage;
 use \Swift_MimePart;
 use \Swift_Transport;
 use \Swift_Attachment;
-use \Swift_Mime_Message;
+use \Swift_Mime_SimpleMessage;
 use \Swift_Events_SendEvent;
 use \Swift_Events_EventListener;
 use Psr\Log\LoggerInterface;
@@ -94,7 +93,7 @@ class MailgunSwiftTransport implements Swift_Transport
     }
 
     /**
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @param null $failedRecipients
      * @return int Number of messages sent
      */
@@ -171,12 +170,12 @@ class MailgunSwiftTransport implements Swift_Transport
     /**
      * Log message content
      *
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @param array $results Results from the api
      * @return void
      */
     protected function logMessageContent(
-        Swift_Mime_Message $message,
+        Swift_Mime_SimpleMessage $message,
         $results = []
     ) {
         $subject = $message->getSubject();
@@ -290,18 +289,19 @@ class MailgunSwiftTransport implements Swift_Transport
     }
 
     /**
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @return string
      */
-    protected function getMessagePrimaryContentType(Swift_Mime_Message $message)
-    {
+    protected function getMessagePrimaryContentType(
+        Swift_Mime_SimpleMessage $message
+    ) {
         $contentType = $message->getContentType();
 
         if ($this->supportsContentType($contentType)) {
             return $contentType;
         }
 
-        // SwiftMailer hides the content type set in the constructor of Swift_Mime_Message as soon
+        // SwiftMailer hides the content type set in the constructor of Swift_Mime_SimpleMessage as soon
         // as you add another part to the message. We need to access the protected property
         // _userContentType to get the original type.
         $messageRef = new \ReflectionClass($message);
@@ -317,11 +317,11 @@ class MailgunSwiftTransport implements Swift_Transport
     /**
      * Convert a Swift Message for the api
      *
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @return array Mailgun Send Message
      * @throws \Swift_SwiftException
      */
-    public function buildMessage(Swift_Mime_Message $message)
+    public function buildMessage(Swift_Mime_SimpleMessage $message)
     {
         $contentType = $this->getMessagePrimaryContentType($message);
 
