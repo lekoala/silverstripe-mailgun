@@ -629,6 +629,10 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
      */
     public function canView($member = null)
     {
+        if(!parent::canView($member)) {
+            return false;
+        }
+        
         $mailer = MailgunHelper::getMailer();
         // Another custom mailer has been set
         if (!$mailer instanceof SwiftMailer) {
