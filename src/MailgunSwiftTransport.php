@@ -498,7 +498,7 @@ class MailgunSwiftTransport implements Swift_Transport
         }
 
         // Should we inline css
-        if (!$inlineCss && MailgunHelper::config()->inline_styles) {
+        if (!$inlineCss && MailgunHelper::config()->inline_styles && $bodyHtml) {
             $bodyHtml = EmailUtils::inline_styles($bodyHtml);
         }
 
