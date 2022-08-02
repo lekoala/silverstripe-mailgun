@@ -20,34 +20,24 @@ class EmailUtils
      */
     public static function inline_styles($html)
     {
-        if (class_exists(CssInliner::class)) {
-            // V3
-            $cssInliner = CssInliner::fromHtml($html)->inlineCss('');
-            $domDocument = $cssInliner->getDomDocument();
+        $cssInliner = CssInliner::fromHtml($html)->inlineCss('');
+        $domDocument = $cssInliner->getDomDocument();
 
-            // potentially, we could also remove classes
-            // HtmlPruner::fromDomDocument($domDocument)->removeElementsWithDisplayNone()
-            //     ->removeRedundantClassesAfterCssInlined($cssInliner);
+        // potentially, we could also remove classes
+        // HtmlPruner::fromDomDocument($domDocument)->removeElementsWithDisplayNone()
+        //     ->removeRedundantClassesAfterCssInlined($cssInliner);
 
-            // disableInvisibleNodeRemoval
-            $doc =   HtmlPruner::fromDomDocument($domDocument);
-            if (method_exists($doc, 'removeInvisibleNodes')) {
-                $doc->removeInvisibleNodes();
-            } else {
-                $doc->removeElementsWithDisplayNone();
-            }
-
-            // enableCssToHtmlMapping
-            $html = CssToAttributeConverter::fromDomDocument($domDocument)
-                ->convertCssToVisualAttributes()->render();
+        // disableInvisibleNodeRemoval
+        $doc =   HtmlPruner::fromDomDocument($domDocument);
+        if (method_exists($doc, 'removeInvisibleNodes')) {
+            $doc->removeInvisibleNodes();
         } else {
-            // V2
-            $emogrifier = new Emogrifier();
-            $emogrifier->disableInvisibleNodeRemoval();
-            $emogrifier->enableCssToHtmlMapping();
-            $emogrifier->setHtml($html);
-            $html = $emogrifier->emogrify();
+            $doc->removeElementsWithDisplayNone();
         }
+
+        // enableCssToHtmlMapping
+        $html = CssToAttributeConverter::fromDomDocument($domDocument)
+            ->convertCssToVisualAttributes()->render();
 
         return $html;
     }

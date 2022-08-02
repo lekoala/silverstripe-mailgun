@@ -3,8 +3,6 @@
 namespace LeKoala\Mailgun\Test;
 
 use SilverStripe\Dev\SapphireTest;
-use SilverStripe\Control\Email\Email;
-use SilverStripe\Core\Injector\Injector;
 use LeKoala\Mailgun\EmailUtils;
 
 /**
@@ -56,7 +54,7 @@ class EmailUtilsTest extends SapphireTest
 
     public function testInlineStyles()
     {
-        if (!class_exists(\Pelago\Emogrifier::class)) {
+        if (!class_exists(\Pelago\Emogrifier\CssInliner::class)) {
             return $this->markTestIncomplete('Install pelago\emogrifier to run this test');
         }
 

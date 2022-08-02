@@ -25,7 +25,7 @@ class MailgunTest extends SapphireTest
      */
     protected $testMailer;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -41,7 +41,7 @@ class MailgunTest extends SapphireTest
         MailgunHelper::registerTransport();
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         parent::tearDown();
 
