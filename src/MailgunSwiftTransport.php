@@ -6,7 +6,7 @@ use \Exception;
 use \Swift_MimePart;
 use \Swift_Transport;
 use \Swift_Attachment;
-use \Swift_Mime_Message;
+use \Swift_Mime_SimpleMessage;
 use \Swift_Events_SendEvent;
 use \Swift_Events_EventListener;
 use Psr\Log\LoggerInterface;
@@ -93,12 +93,12 @@ class MailgunSwiftTransport implements Swift_Transport
     }
 
     /**
-     * @param Swift_Mime_Message $message
+     * @param Swift_Mime_SimpleMessage $message
      * @param null $failedRecipients
      * @return int Number of messages sent
      */
     public function send(
-        Swift_Mime_Message $message,
+        Swift_Mime_SimpleMessage $message,
         &$failedRecipients = null
     ) {
         $this->resultApi = null;
