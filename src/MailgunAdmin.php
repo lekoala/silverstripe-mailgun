@@ -569,7 +569,7 @@ class MailgunAdmin extends LeftAndMain implements PermissionProvider
      */
     public function providePermissions()
     {
-        $title = _t("MailgunAdmin.MENUTITLE", LeftAndMain::menu_title_for_class('Mailgun'));
+        $title = _t("MailgunAdmin.MENUTITLE", LeftAndMain::menu_title('Mailgun', false));
         return [
             "CMS_ACCESS_MAILGUN" => [
                 'name' => _t('MailgunAdmin.ACCESS', "Access to '{title}' section", ['title' => $title]),
