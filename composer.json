@@ -16,7 +16,6 @@
     "require": {
         "php": ">=8",
         "silverstripe/framework": "^4.0",
-        "silverstripe/cms": "^4.0",
         "symbiote/silverstripe-gridfieldextensions": "^3.2",
         "pelago/emogrifier": "^6.0",
         "mailgun/mailgun-php": "^3.0",
